@@ -163,10 +163,17 @@ export const run = async (
                 skip();
             }
 
+            console.log('🔍 DEBUG: Checking thresholds...');
+            console.log('🔍 DEBUG: isInPR:', isInPR);
+            console.log('🔍 DEBUG: options.changedFilesThreshold:', options.changedFilesThreshold);
+            console.log('🔍 DEBUG: options.threshold:', options.threshold);
+
             // Se estamos em um PR e temos threshold específico para linhas modificadas
             if (isInPR && options.changedFilesThreshold !== undefined) {
+                console.log('🎯 Using changed-files-threshold:', options.changedFilesThreshold);
                 const octokit = getOctokit(options.token);
                 const patch = await getPrPatch(octokit, options);
+                console.log('📋 Patch content length:', patch.length);
                 
                 return checkChangedFilesThreshold(
                     headCoverage!,
@@ -177,6 +184,7 @@ export const run = async (
                 );
             }
 
+            console.log('📊 Using regular threshold check');
             // Fallback para o threshold normal
             return checkThreshold(
                 headCoverage!,

@@ -17,19 +17,32 @@ export const checkChangedFilesThreshold = (
     workingDirectory: string | undefined,
     dataCollector: DataCollector<unknown>
 ): ThresholdResult[] => {
+    console.log('🎯 checkChangedFilesThreshold called with threshold:', threshold);
+    console.log('📋 Patch content preview:', patchContent.substring(0, 200) + '...');
+    
     const addedLines = indexAddedLines(patchContent);
+    console.log('📝 Added lines found:', Object.keys(addedLines).length, 'files');
+    console.log('📁 Files with changes:', Object.keys(addedLines));
+    
     const totalResults: ThresholdResult[] = [];
 
     // Para cada arquivo que teve linhas modificadas
     Object.entries(addedLines).forEach(([filePath, lineNumbers]) => {
         if (!lineNumbers || lineNumbers.length === 0) return;
 
+        console.log(`🔍 Processing file: ${filePath}, lines added: ${lineNumbers.length}`);
+
         // Encontrar o mapeamento de coverage para este arquivo
         const fullPath = Object.keys(report.coverageMap).find(path => 
             path.endsWith(filePath) || path.includes(filePath)
         );
 
-        if (!fullPath || !report.coverageMap[fullPath]) return;
+        console.log(`🗂️ Looking for coverage of ${filePath}, found: ${fullPath}`);
+
+        if (!fullPath || !report.coverageMap[fullPath]) {
+            console.log(`❌ No coverage found for ${filePath}`);
+            return;
+        }
 
         const fileCoverage = report.coverageMap[fullPath];
         const normalizedFileCoverage = 'statementMap' in fileCoverage 
@@ -42,14 +55,22 @@ export const checkChangedFilesThreshold = (
             lineNumbers
         );
 
-        if (changedLinesCoverage.total === 0) return;
+        console.log(`📊 ${filePath}: ${changedLinesCoverage.covered}/${changedLinesCoverage.total} statements covered`);
+
+        if (changedLinesCoverage.total === 0) {
+            console.log(`⚠️ No statements found in changed lines for ${filePath}`);
+            return;
+        }
 
         const coveragePercent = getPercents(
             changedLinesCoverage.covered,
             changedLinesCoverage.total
         );
 
+        console.log(`📈 ${filePath}: ${coveragePercent}% coverage (threshold: ${threshold}%)`);
+
         if (coveragePercent < threshold) {
+            console.log(`❌ THRESHOLD FAILED for ${filePath}: ${coveragePercent}% < ${threshold}%`);
             totalResults.push({
                 path: filePath,
                 expected: threshold,
@@ -57,10 +78,15 @@ export const checkChangedFilesThreshold = (
                 type: ThresholdType.LINES,
                 isChangedLinesThreshold: true, // Marcar como threshold de linhas modificadas
             });
+        } else {
+            console.log(`✅ THRESHOLD PASSED for ${filePath}: ${coveragePercent}% >= ${threshold}%`);
         }
     });
 
+    console.log(`🎯 Total threshold failures: ${totalResults.length}`);
+
     if (totalResults.length > 0) {
+        console.log('💥 Adding UNDER_THRESHOLD to dataCollector');
         dataCollector.add(FailReason.UNDER_THRESHOLD);
     }
 
@@ -68,11 +94,15 @@ export const checkChangedFilesThreshold = (
 };
 
 function indexAddedLines(patchContent: string): LineIndex {
+    console.log('🔍 Parsing patch content...');
     const patch = parseDiff(patchContent);
+    console.log('📋 Parsed', patch.length, 'file changes');
+    
     const addedLines: { [key: string]: number[] } = {};
     
     for (const file of patch) {
         if (file.to) {
+            console.log(`📁 Processing file: ${file.to}`);
             addedLines[file.to] = [];
             for (const chunk of file.chunks) {
                 for (const change of chunk.changes) {
@@ -81,6 +111,8 @@ function indexAddedLines(patchContent: string): LineIndex {
                     }
                 }
             }
+            console.log(`➕ Added ${addedLines[file.to].length} lines in ${file.to}`);
+            console.log(`📝 Lines: [${addedLines[file.to].slice(0, 10).join(', ')}${addedLines[file.to].length > 10 ? '...' : ''}]`);
         }
     }
     return addedLines;

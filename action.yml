@@ -1,6 +1,6 @@
 name: 'Jest coverage report'
-description: 'Track your code coverage in each pull request.'
-author: 'Artiom Tretjakovas <artiom.tretjakovas2@gmail.com>'
+description: 'Track your code coverage in each pull request with changed-files-threshold support.'
+author: 'luigiluna (modified from ArtiomTr original)'
 branding:
     icon: 'activity'
     color: 'gray-dark'
